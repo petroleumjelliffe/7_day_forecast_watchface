@@ -1,10 +1,12 @@
 {
     "appKeys": {
         "KEY_CONDITIONS": 1,
-        "KEY_TEMPERATURE": 0
+        "KEY_TEMPERATURE": 0,
+        "KEY_TEMPERATURE_BYTE_ARRAY": 2
     },
     "capabilities": [
-        "location"
+        "location",
+        "configurable"
     ],
     "companyName": "PetroleumJelliffe",
     "enableMultiJS": true,

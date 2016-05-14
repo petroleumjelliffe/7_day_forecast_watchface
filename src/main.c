@@ -2,6 +2,9 @@
 
 #define KEY_TEMPERATURE 0
 #define KEY_CONDITIONS 1
+#define KEY_TEMPERATURE_DATA 2
+
+#define DEFAULT_TEMPS "AGAGAGAGAGAGA"
 
 typedef struct {
   char temp_buffer[20];
@@ -10,7 +13,7 @@ typedef struct {
 static Window *s_main_window;
 static TextLayer *s_time_layer;
 static TextLayer *s_weather_layer;
-static Layer *some_layer;
+static Layer *s_forecast;
 
 static BitmapLayer *s_background_layer;
 static GBitmap *s_background_bitmap;
@@ -89,26 +92,24 @@ graphics_draw_text(ctx, buffer, font, txtBounds, GTextOverflowModeWordWrap, GTex
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   // Store incoming information
   static char temperature_buffer[20];
-  static char conditions_buffer[32];
-  static char weather_layer_buffer[32];
+  //static char conditions_buffer[32];
+  //static char weather_layer_buffer[32];
 
   // Read tuples for data
   Tuple *temp_tuple = dict_find(iterator, KEY_TEMPERATURE);
-//   Tuple *conditions_tuple = dict_find(iterator, KEY_CONDITIONS);
 
-  // If all data is available, use it  //   if(temp_tuple && conditions_tuple) {
+  // If all data is available, use it 
   if(temp_tuple) {
+    //read the string from the message
     snprintf(temperature_buffer, sizeof(temperature_buffer), "%s", temp_tuple->value->cstring);
-//     snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
 
     // Assemble full string and display
-    //snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
     text_layer_set_text(s_weather_layer, temperature_buffer);
     
     int max = temperature_buffer[0];
     int min = temperature_buffer[1];
     double scale = (168.0 / 3.0) / (max - min); //pebble height top third
-        APP_LOG(APP_LOG_LEVEL_ERROR, "scale is %d", (int)(scale*100));
+    APP_LOG(APP_LOG_LEVEL_ERROR, "scale is %d", (int)(scale*100));
 
     for (int i = 1; i<5; i++) {
       int high = temperature_buffer[i*2];
@@ -117,13 +118,15 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     }    
 
     // Give tempereature display layer the temperature data
-//     char (*dataPointer)[20] = layer_get_data(some_layer);
-    Temps* dataPointer = layer_get_data(some_layer);
-    
-   // dataPointer->temp_buffer = temperature_buffer;
+    Temps* dataPointer = layer_get_data(s_forecast);
     strcpy(dataPointer->temp_buffer, temperature_buffer);
-    //dataPointer = &temperature_buffer;
+    
+    //store the temp for later
+    persist_write_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
+
+    
     APP_LOG(APP_LOG_LEVEL_ERROR, "data pointer: %p", dataPointer);
+    
   }
 }
 
@@ -225,11 +228,17 @@ GRect layer_bounds = bounds;
   text_layer_set_font(s_weather_layer, s_weather_font);
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
   
-     // Create a Layer and set the update_proc
-  some_layer = layer_create_with_data(GRect(PBL_IF_ROUND_ELSE(18, 0),PBL_IF_ROUND_ELSE(90-56, 0), 144, 168), sizeof(Temps));
-  layer_set_update_proc(some_layer, some_update_proc);
-  layer_add_child(window_layer, some_layer);
-
+  // Create a Layer and set the update_proc
+  s_forecast = layer_create_with_data(GRect(PBL_IF_ROUND_ELSE(18, 0),PBL_IF_ROUND_ELSE(90-56, 0), 144, 168), sizeof(Temps));
+  layer_set_update_proc(s_forecast, some_update_proc);
+  layer_add_child(window_layer, s_forecast);
+  
+  //Read the persistent temperature data
+  Temps* dataPointer = layer_get_data(s_forecast);
+  char temperature_buffer[20];
+  if (persist_exists(KEY_TEMPERATURE_DATA)) {
+    persist_read_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
+  } 
   
 }
 
@@ -249,6 +258,9 @@ static void main_window_unload(Window *window) {
   // Destroy weather elements
   text_layer_destroy(s_weather_layer);
   fonts_unload_custom_font(s_weather_font);
+  
+  //Destroy graph
+  layer_destroy(s_forecast);
 }
 
 
@@ -282,6 +294,9 @@ static void init() {
 
   // Open AppMessage
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  
+
+
 }
 
 static void deinit() {
