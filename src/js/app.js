@@ -14,11 +14,11 @@ function locationSuccess(pos) {
 //   var url = "http://api.openweathermap.org/data/2.5/weather?lat=" +
 //       pos.coords.latitude + "&lon=" + pos.coords.longitude + '&appid=' + myAPIKey;
 
-    var url = "https://murmuring-tor-41917.herokuapp.com/weather";
-//     + "?lat=" +      pos.coords.latitude + "&lon=" + pos.coords.longitude;
-
+    var url = "https://murmuring-tor-41917.herokuapp.com/weather"
+    + "?lat=" +      pos.coords.latitude + "&lon=" + pos.coords.longitude;
+//&forecast_key=
   // Send request to OpenWeatherMap
-  xhrRequest(url, 'GET', 
+  xhrRequest(url, 'GET',
     function(responseText) {
       // responseText contains a JSON object with weather info
       var json = JSON.parse(responseText);
@@ -26,7 +26,7 @@ function locationSuccess(pos) {
 
       //encode daily hi/low pairs into a string
       //max, min, high1, low1, ... , high7, low7
-      var string = "";      
+      var string = "";
       for (var i=0; i<json.length; i++){
         string = string + String.fromCharCode(Math.round(json[i]));
       }
@@ -35,14 +35,14 @@ function locationSuccess(pos) {
       // Temperature in Kelvin requires adjustment
 //       var temperature = Math.round(json.main.temp - 273.15);
 //       var temperatureChar = String.fromCharCode(temperature);
-      
+
 //       console.log("Temperature is " + temperatureChar);
 
       // Conditions
-//       var conditions = json.weather[0].main;      
+//       var conditions = json.weather[0].main;
 //       console.log("Conditions are " + conditions);
-      
-      
+
+
       // Assemble dictionary using our keys
       var dictionary = {
         "KEY_TEMPERATURE": string
@@ -58,7 +58,7 @@ function locationSuccess(pos) {
           console.log("Error sending weather info to Pebble!");
         }
       );
-    }      
+    }
   );
 }
 
@@ -75,7 +75,7 @@ function getWeather() {
 }
 
 // Listen for when the watchface is opened
-Pebble.addEventListener('ready', 
+Pebble.addEventListener('ready',
   function(e) {
     console.log("PebbleKit JS ready!");
 
@@ -89,5 +89,5 @@ Pebble.addEventListener('appmessage',
   function(e) {
     console.log("AppMessage received!");
     getWeather();
-  }                     
+  }
 );
