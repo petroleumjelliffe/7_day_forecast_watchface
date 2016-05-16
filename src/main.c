@@ -11,7 +11,7 @@ typedef struct {
 } Temps;
 
 static Window *s_main_window;
-static TextLayer *s_time_layer;
+static TextLayer *s_time_layer, *s_date_layer;
 static TextLayer *s_weather_layer;
 static Layer *s_forecast;
 static Layer *s_battery_layer;
@@ -126,7 +126,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     snprintf(temperature_buffer, sizeof(temperature_buffer), "%s", temp_tuple->value->cstring);
 
     // Assemble full string and display
-    text_layer_set_text(s_weather_layer, temperature_buffer);
+//     text_layer_set_text(s_weather_layer, temperature_buffer);
     
     int max = temperature_buffer[0];
     int min = temperature_buffer[1];
@@ -169,11 +169,18 @@ static void update_time() {
 
   // Write the current hours and minutes into a buffer
   static char s_buffer[8];
-  strftime(s_buffer, sizeof(s_buffer), clock_is_24h_style() ?
-                                          "%H:%M" : "%I:%M", tick_time);
+  strftime(s_buffer, sizeof(s_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
 
   // Display this time on the TextLayer
   text_layer_set_text(s_time_layer, s_buffer);
+  
+  // Copy date into buffer from tm structure
+  static char date_buffer[16];
+  strftime(date_buffer, sizeof(date_buffer), "%a %B %e", tick_time);
+
+  // Show the date
+  text_layer_set_text(s_date_layer, date_buffer);
+
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -222,19 +229,19 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
 
   // Create temperature Layer
-  s_weather_layer = text_layer_create(
+  s_date_layer = text_layer_create(
       GRect(0, PBL_IF_ROUND_ELSE(140, 120), bounds.size.w, 25));
 
   // Style the text
-  text_layer_set_background_color(s_weather_layer, GColorClear);
-  text_layer_set_text_color(s_weather_layer, GColorWhite);
-  text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
-  text_layer_set_text(s_weather_layer, "Loading...");
+  text_layer_set_background_color(s_date_layer, GColorClear);
+  text_layer_set_text_color(s_date_layer, GColorWhite);
+  text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+  text_layer_set_text(s_date_layer, "Loading...");
 
   // Create second custom font, apply it and add to Window
   s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_20));
-  text_layer_set_font(s_weather_layer, s_weather_font);
-  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
+  text_layer_set_font(s_date_layer, s_weather_font);
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
   
   // Create a forecast Layer and set the update_proc
   s_forecast = layer_create_with_data(GRect(PBL_IF_ROUND_ELSE(18, 0),PBL_IF_ROUND_ELSE(90-56, 0), 144, 168), sizeof(Temps));
@@ -259,6 +266,7 @@ static void main_window_load(Window *window) {
 static void main_window_unload(Window *window) {
   // Destroy TextLayer
   text_layer_destroy(s_time_layer);
+  text_layer_destroy(s_date_layer);
 
   // Unload GFont
   fonts_unload_custom_font(s_time_font);
