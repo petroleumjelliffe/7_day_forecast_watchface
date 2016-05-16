@@ -105,7 +105,8 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   // Draw the bar
-  graphics_context_set_fill_color(ctx, GColorWhite);
+  GColor battery_color = (s_battery_level > 20) ? GColorWhite : GColorRed;
+  graphics_context_set_fill_color(ctx, battery_color);
   graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
 }
  
