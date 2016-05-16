@@ -14,6 +14,7 @@ static Window *s_main_window;
 static TextLayer *s_time_layer;
 static TextLayer *s_weather_layer;
 static Layer *s_forecast;
+static Layer *s_battery_layer;
 
 static BitmapLayer *s_background_layer;
 static GBitmap *s_background_bitmap;
@@ -21,36 +22,45 @@ static GBitmap *s_background_bitmap;
 static GFont s_time_font;
 static GFont s_weather_font;
 
-static void some_update_proc(Layer *layer, GContext *ctx) {
-    Temps* dataPointer = layer_get_data(layer);
-//     char buffer[20] = dataPointer->temp_buffer;
-    GRect bounds = layer_get_bounds(layer);
+static int s_battery_level;
 
-      GRect frame = grect_inset(bounds, GEdgeInsets(10));
-
-    APP_LOG(APP_LOG_LEVEL_ERROR, "arr: %s", dataPointer->temp_buffer);
-
-    int now = dataPointer->temp_buffer[0];
-    int max = dataPointer->temp_buffer[1];
-    int min = dataPointer->temp_buffer[2];
-
-    //get layer bounds, width and height
-    double scale = (168.0 / 3.0) / (max - min); //pebble height top third
-    graphics_context_set_fill_color(ctx, GColorWhite);
+static void battery_callback(BatteryChargeState state) {
+  // Record the new battery level
+  s_battery_level = state.charge_percent;
   
-    for (int i = 1; i<8; i++) {
-      int high = dataPointer->temp_buffer[i*2+1];
-      int low = dataPointer->temp_buffer[i*2+2];
-      APP_LOG(APP_LOG_LEVEL_ERROR, "high: %d, low: %d", high, low);
-      GRect rect_bounds = GRect(16*i, (max - high)*scale , 14, (high - low)*scale);
-      graphics_draw_rect(ctx, rect_bounds);
-      int corner_radius = 2;
-      graphics_fill_rect(ctx, rect_bounds, corner_radius, GCornersAll);
+  // Update meter
+  layer_mark_dirty(s_battery_layer);
+}
 
-    }
-  
-    int x10 = ((min + 9) / 10) * 10;
-      graphics_context_set_fill_color(ctx, GColorBlack);
+static void weather_callback(Layer *layer, GContext *ctx) {
+  Temps* dataPointer = layer_get_data(layer);
+  GRect bounds = layer_get_bounds(layer);
+
+  GRect frame = grect_inset(bounds, GEdgeInsets(10));
+
+  APP_LOG(APP_LOG_LEVEL_ERROR, "arr: %s", dataPointer->temp_buffer);
+
+  int now = dataPointer->temp_buffer[0];
+  int max = dataPointer->temp_buffer[1];
+  int min = dataPointer->temp_buffer[2];
+
+  //get layer bounds, width and height
+  double scale = (168.0 / 3.0) / (max - min); //pebble height top third
+  graphics_context_set_fill_color(ctx, GColorWhite);
+
+  for (int i = 1; i<8; i++) {
+    int high = dataPointer->temp_buffer[i*2+1];
+    int low = dataPointer->temp_buffer[i*2+2];
+    APP_LOG(APP_LOG_LEVEL_ERROR, "high: %d, low: %d", high, low);
+    GRect rect_bounds = GRect(16*i, (max - high)*scale , 14, (high - low)*scale);
+    graphics_draw_rect(ctx, rect_bounds);
+    int corner_radius = 2;
+    graphics_fill_rect(ctx, rect_bounds, corner_radius, GCornersAll);
+
+  }
+
+  int x10 = ((min + 9) / 10) * 10;
+    graphics_context_set_fill_color(ctx, GColorBlack);
 
   for (int j=x10; j < max; j+= 10 ) {
     float dy = (max - j) * scale;
@@ -59,35 +69,46 @@ static void some_update_proc(Layer *layer, GContext *ctx) {
     graphics_draw_line(ctx, start, end);
 
   }
-  
-    //Current temp
-graphics_context_set_stroke_color(ctx, GColorRed);
-GPoint startNow = GPoint(0, (max-now)*scale);
-GPoint endNow = GPoint(20, (max-now)*scale);
 
-char buffer[8];
+  //Current temp
+  graphics_context_set_stroke_color(ctx, GColorRed);
+  GPoint startNow = GPoint(0, (max-now)*scale);
+  GPoint endNow = GPoint(20, (max-now)*scale);
+
+  char buffer[8];
   snprintf(buffer, 8, "%d°", now);
-          APP_LOG(APP_LOG_LEVEL_ERROR, "now: %s", buffer);
+  APP_LOG(APP_LOG_LEVEL_ERROR, "now: %s", buffer);
 
-
-  
   // Load the font
-GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+
+  // Determine a reduced bounding box
+  GRect txtBounds = GRect(0,0,32, 56);
+
+  // Calculate the size of the text to be drawn, with restricted space
+  GSize text_size = graphics_text_layout_get_content_size(buffer, font, txtBounds, GTextOverflowModeWordWrap, GTextAlignmentCenter);
 
 
-// Determine a reduced bounding box
-GRect txtBounds = GRect(0,0,32, 56);
-
-// Calculate the size of the text to be drawn, with restricted space
-GSize text_size = graphics_text_layout_get_content_size(buffer, font, txtBounds, GTextOverflowModeWordWrap, GTextAlignmentCenter);
-
-  
-// Draw the temp
-graphics_draw_line(ctx, startNow, endNow);
-graphics_draw_text(ctx, buffer, font, txtBounds, GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
-
-  
+  // Draw the temp
+  graphics_draw_line(ctx, startNow, endNow);
+  graphics_draw_text(ctx, buffer, font, txtBounds, GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
 }
+
+static void battery_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+
+  // Find the width of the bar
+  int width = (int)(float)(((float)s_battery_level / 100.0F) * 114.0F);
+
+  // Draw the background
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+
+  // Draw the bar
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, GRect(0, 0, width, bounds.size.h), 0, GCornerNone);
+}
+ 
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   // Store incoming information
@@ -124,9 +145,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     //store the temp for later
     persist_write_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
 
-    
-    APP_LOG(APP_LOG_LEVEL_ERROR, "data pointer: %p", dataPointer);
-    
+    APP_LOG(APP_LOG_LEVEL_ERROR, "data pointer: %p", dataPointer);  
   }
 }
 
@@ -179,20 +198,8 @@ static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
   
-GRect layer_bounds = bounds;
-// layer_bounds.size.h /= 2;
+  GRect layer_bounds = bounds;
   APP_LOG(APP_LOG_LEVEL_INFO, "Hieght: %d and width: %d",layer_bounds.size.h, layer_bounds.size.w );
-
-
-  // Create GBitmap
-//   s_background_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BACKGROUND);
-
-  // Create BitmapLayer to display the GBitmap
-//   s_background_layer = bitmap_layer_create(bounds);
-
-  // Set the bitmap onto the layer and add to the window
-//   bitmap_layer_set_bitmap(s_background_layer, s_background_bitmap);
-//   layer_add_child(window_layer, bitmap_layer_get_layer(s_background_layer));
 
   // Create the TextLayer with specific bounds
   s_time_layer = text_layer_create(
@@ -228,9 +235,9 @@ GRect layer_bounds = bounds;
   text_layer_set_font(s_weather_layer, s_weather_font);
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
   
-  // Create a Layer and set the update_proc
+  // Create a forecast Layer and set the update_proc
   s_forecast = layer_create_with_data(GRect(PBL_IF_ROUND_ELSE(18, 0),PBL_IF_ROUND_ELSE(90-56, 0), 144, 168), sizeof(Temps));
-  layer_set_update_proc(s_forecast, some_update_proc);
+  layer_set_update_proc(s_forecast, weather_callback);
   layer_add_child(window_layer, s_forecast);
   
   //Read the persistent temperature data
@@ -240,6 +247,12 @@ GRect layer_bounds = bounds;
     persist_read_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
   } 
   
+  // Create battery meter Layer
+  s_battery_layer = layer_create(GRect(0, bounds.size.h-2, bounds.size.w, 2));
+  layer_set_update_proc(s_battery_layer, battery_update_proc);
+
+  // Add to Window
+  layer_add_child(window_get_root_layer(window), s_battery_layer);  
 }
 
 static void main_window_unload(Window *window) {
@@ -261,6 +274,9 @@ static void main_window_unload(Window *window) {
   
   //Destroy graph
   layer_destroy(s_forecast);
+  
+  //Destroy battery
+  layer_destroy(s_battery_layer);  
 }
 
 
@@ -279,6 +295,11 @@ static void init() {
 
   // Show the Window on the watch, with animated=true
   window_stack_push(s_main_window, true);
+  
+  // Register for battery level updates
+  battery_state_service_subscribe(battery_callback);
+  // Ensure battery level is displayed from the start
+  battery_callback(battery_state_service_peek());
 
   // Make sure the time is displayed from the start
   update_time();
@@ -294,9 +315,6 @@ static void init() {
 
   // Open AppMessage
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
-  
-
-
 }
 
 static void deinit() {
