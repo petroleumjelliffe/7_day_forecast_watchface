@@ -1,0 +1,55 @@
+{
+    "author": "PetroleumJelliffe",
+    "dependencies": {
+        "pebble-clay": "^1.0.1"
+    },
+    "keywords": [],
+    "name": "7dayforecast",
+    "pebble": {
+        "capabilities": [
+            "location",
+            "configurable"
+        ],
+        "displayName": "7-day Forecast Watchface",
+        "enableMultiJS": true,
+        "messageKeys": [
+            "Temperature",
+            "Temps",
+            "Data",
+            "ForecastApi"
+        ],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/background.png",
+                    "name": "IMAGE_BACKGROUND",
+                    "type": "bitmap"
+                },
+                {
+                    "compatibility": "2.7",
+                    "file": "fonts/perfect-dos-vga.ttf",
+                    "name": "FONT_PERFECT_DOS_48",
+                    "type": "font"
+                },
+                {
+                    "compatibility": "2.7",
+                    "file": "fonts/perfect-dos-vga.ttf",
+                    "name": "FONT_PERFECT_DOS_20",
+                    "type": "font"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk"
+        ],
+        "uuid": "19fe512d-5413-448f-840d-390bb4fe940a",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "1.1.0"
+}

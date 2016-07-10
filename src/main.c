@@ -1,8 +1,5 @@
 #include <pebble.h>
 
-#define KEY_TEMPERATURE 0
-#define KEY_CONDITIONS 1
-#define KEY_TEMPERATURE_DATA 2
 
 #define DEFAULT_TEMPS "AGAGAGAGAGAGA"
 
@@ -118,7 +115,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   //static char weather_layer_buffer[32];
 
   // Read tuples for data
-  Tuple *temp_tuple = dict_find(iterator, KEY_TEMPERATURE);
+  Tuple *temp_tuple = dict_find(iterator, MESSAGE_KEY_Temps);
 
   // If all data is available, use it 
   if(temp_tuple) {
@@ -144,7 +141,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     strcpy(dataPointer->temp_buffer, temperature_buffer);
     
     //store the temp for later
-    persist_write_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
+    persist_write_data(MESSAGE_KEY_Data, dataPointer, sizeof(Temps));
 
     APP_LOG(APP_LOG_LEVEL_ERROR, "data pointer: %p", dataPointer);  
   }
@@ -251,8 +248,8 @@ static void main_window_load(Window *window) {
   //Read the persistent temperature data
   Temps* dataPointer = layer_get_data(s_forecast);
   char temperature_buffer[20];
-  if (persist_exists(KEY_TEMPERATURE_DATA)) {
-    persist_read_data(KEY_TEMPERATURE_DATA, dataPointer, sizeof(Temps));
+  if (persist_exists(MESSAGE_KEY_Data)) {
+    persist_read_data(MESSAGE_KEY_Data, dataPointer, sizeof(Temps));
   } 
   
   // Create battery meter Layer
